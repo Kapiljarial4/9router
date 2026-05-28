@@ -75,7 +75,7 @@ export class DefaultExecutor extends BaseExecutor {
   }
 
   buildHeaders(credentials, stream = true) {
-    const headers = { "Content-Type": "application/json", ...this.config.headers };
+    const headers = { "Content-Type": "application/json", "Accept-Encoding": "identity", ...this.config.headers };
 
     switch (this.provider) {
       case "gemini":

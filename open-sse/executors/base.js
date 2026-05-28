@@ -43,6 +43,7 @@ export class BaseExecutor {
   buildHeaders(credentials, stream = true) {
     const headers = {
       "Content-Type": "application/json",
+      "Accept-Encoding": "identity",
       ...this.config.headers
     };
 
