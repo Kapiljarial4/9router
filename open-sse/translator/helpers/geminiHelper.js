@@ -4,7 +4,10 @@
 export const UNSUPPORTED_SCHEMA_CONSTRAINTS = [
   // Basic constraints (not supported by Gemini API)
   "minLength", "maxLength", "exclusiveMinimum", "exclusiveMaximum",
-  "pattern", "minItems", "maxItems", "format",
+  // NOTE: `pattern` intentionally NOT included — Gemini accepts it on string
+  // constraints, and glob/grep tools depend on it for their `pattern` parameter.
+  // Removing it broke tool schemas (decolua/9router#1368, OmniRoute#4339).
+  "minItems", "maxItems", "format",
   // Claude rejects these in VALIDATED mode
   "default", "examples",
   // JSON Schema meta keywords
@@ -121,6 +124,8 @@ export function generateProjectId() {
 
 // Helper: Remove unsupported keywords recursively from object/array
 // Also strips all vendor extension fields (x- prefixed) not supported by Gemini
+// Position-aware: skips keyword deletion inside `properties` maps (property names
+// like "pattern" are user-defined, not JSON-Schema constraints)
 function removeUnsupportedKeywords(obj, keywords) {
   if (!obj || typeof obj !== "object") return;
 
@@ -132,6 +137,17 @@ function removeUnsupportedKeywords(obj, keywords) {
   }
 
   for (const key of Object.keys(obj)) {
+    if (key === "properties" && obj.properties && typeof obj.properties === "object") {
+      // Inside a `properties` map: recurse into each property's subschema
+      // but do NOT delete property names (they're arbitrary, not schema keywords)
+      for (const propSchema of Object.values(obj.properties)) {
+        if (propSchema && typeof propSchema === "object") {
+          removeUnsupportedKeywords(propSchema, keywords);
+        }
+      }
+      continue;
+    }
+
     if (keywords.includes(key) || key.startsWith("x-")) {
       delete obj[key];
       continue;
